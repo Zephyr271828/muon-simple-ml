@@ -1,0 +1,119 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2025_conference,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+% \input{math_commands.tex}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{url}
+\usepackage[table]{xcolor}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[
+    colorlinks=true,
+    citecolor=NavyBlue,
+    linkcolor=NavyBlue,
+    urlcolor=NavyBlue,
+    filecolor=NavyBlue
+]{hyperref}
+
+\title{Who's Muon? Analysis of Momentum Newton Schultz on Simple Machine Learning Problems}
+
+\author{
+  Yufeng Xu \\
+  Computer Science \\
+  NYU Shanghai \\
+  \texttt{yx3038@nyu.edu}
+}
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\yufeng}[1]{\textcolor{NavyBlue}{[\textbf{yufeng:} #1]}}
+
+% \iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+% TODO: Write your abstract here.
+
+\end{abstract}
+
+\section{Introduction}
+
+\section{Related Works}
+\textbf{Muon.}
+\citet{bernstein2024modulardualitydeeplearning}
+\cite{bernstein2024oldoptimizernewnorm}
+\cite{jordan2024muon} 
+\cite{bernstein2025deriving}
+\cite{vyas2025soapimprovingstabilizingshampoo}
+
+\textbf{Analysis of AdamW.}
+
+\section{Preliminary}
+In this section, we introduce the parameterization of neural networks and review the optimization algorithms considered in this work, including gradient descent (GD), Adam, AdamW, and Muon. Our goal is to establish a unified mathematical framework for comparing their update rules and to clarify why Muon fundamentally differs from classical optimizers.
+% \vsapce{5pt}\\
+\subsection{Parameterization of Machine Learning Models}
+Consider a supervised learning problem with dataset $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$,
+and a model $f_\theta : \mathbb{R}^d \rightarrow \mathbb{R}^k$ parameterized by $\theta$. Training minimizes an empirical risk
+$\min_\theta \; \frac{1}{N} \sum_{i=1}^N \ell(f_\theta(x_i), y_i)$.
+For different model classes, the geometry of $\theta$ varies:
+\vspace{5pt}\\
+\textbf{Classical Regression Models.}
+\vspace{5pt}\\
+\textbf{Multilayer Perceptrons (MLPs).}
+\vspace{5pt}\\
+\textbf{Convolutional Neural Networks (CNNs).}
+\subsection{Optimization Methods for Neural Networks}
+\textbf{Gradient Descent (GD).}
+\begin{align}
+    W_{t+1}=W_{t}-\eta \nabla_{W}\mathcal{L}
+\end{align}
+\textbf{Adaptive Moment Estimation (Adam).}
+\begin{align}
+    \begin{cases}
+        m_t&=\beta_1 m_{t-1}+(1-\beta_1)g_t\\
+        v_t&=\beta_2v_{t-1}+(1-\beta_2)g_t^2\\
+        \hat{m_t}&=\frac{m_t}{1-\beta_1^t},\hat{v_t}=\frac{v_t}{1-\beta_2^t}\\
+        W_{t+1}&=W_t-\eta\frac{\hat{m_t}}{\sqrt{\hat{v_t}+\epsilon}}
+    \end{cases}
+\end{align}
+\textbf{Adam with Weight dDecay (AdamW)}
+\begin{align*}
+    W_{t+1}=(1-\eta\lambda)W_t-\eta\frac{\hat{m_t}}{\sqrt{\hat{v-t}+\epsilon}}
+\end{align*}
+\textbf{Momentum Newton-Schulz (Muon)}
+\begin{align}
+    \begin{cases}
+        M_t&=\mu M_{t-1}+\nabla_{W}\mathcal{L}_t\\
+        M_t&=U_t\Sigma_tV_t^T\\
+        \tilde{M_t}&=\text{proj}_{\text{orth}}(M_t)=U_tV_t^T\\
+        W_{t+1}&=W_t-\eta \tilde{M_t}
+    \end{cases}
+\end{align}
+
+
+
+\section{Experiments}
+
+\section{Conclusion}
+
+\bibliography{iclr2025_conference}
+\bibliographystyle{iclr2025_conference}
+
+\appendix
+
+\section{Budget Comparison}
+\label{appendix:budget}
+
+\end{document}
