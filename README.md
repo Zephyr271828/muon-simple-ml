@@ -2,9 +2,9 @@
 
 ## Paper \& Blogs
 ### Muon
-- [Old Optimizer, New Norm: Anthology](https://arxiv.org/abs/2409.20325)
-- [Deriving Muon](https://jeremybernste.in/writing/deriving-muon)
 - [Muon: An optimizer for hidden layers in neural networks](https://kellerjordan.github.io/posts/muon/)
+- [Deriving Muon](https://jeremybernste.in/writing/deriving-muon)
+- [Old Optimizer, New Norm: Anthology](https://arxiv.org/abs/2409.20325)
 - [Shampoo: Preconditioned Stochastic Tensor Optimization](https://arxiv.org/abs/1802.09568)
 - [Modular Duality in Deep Learning](https://arxiv.org/abs/2410.21265)
 
