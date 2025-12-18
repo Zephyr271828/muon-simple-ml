@@ -10,7 +10,9 @@ from transformers import (
     LlamaConfig,
     LlamaForCausalLM,
     LlamaTokenizer,
+    AutoModelForCausalLM,
     AutoTokenizer,
+    AutoConfig,
     get_cosine_schedule_with_warmup,
 )
 
@@ -64,10 +66,11 @@ def get_model_and_dataloader(
     name2path = {
         "openwebtext-100k": "Elriggs/openwebtext-100k",
     }
-    train_dataset = load_dataset(
+    raw_dataset = load_dataset(
         name2path[dataset_name], split="train", trust_remote_code=True
     )
-    train_dataset = train_dataset.select(range(min(limit, len(train_dataset))))
+    raw_dataset = raw_dataset.select(range(min(limit, len(raw_dataset))))
+    train_dataset, val_dataset = raw_dataset.train_test_split(test_size=0.01).values()
     if model_name == "qwen":
         tokenizer = Qwen2Tokenizer.from_pretrained(
             "Qwen/Qwen2.5-0.5B", trust_remote_code=True
@@ -76,10 +79,16 @@ def get_model_and_dataloader(
         tokenizer = AutoTokenizer.from_pretrained(
             "meta-llama/Llama-3.1-8B", trust_remote_code=True
         )
+    elif model_name == "olmo":
+        tokenizer = AutoTokenizer.from_pretrained(
+            "allenai/OLMo-2-0425-1B", trust_remote_code=True
+        )
     else:
         assert 0, f"model {model_name} not supported"
     train_dataset = MoonDataset(dataset_name, train_dataset, tokenizer)
+    val_dataset = MoonDataset(dataset_name, val_dataset, tokenizer)
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
 
     if model_name == "qwen":
         config = Qwen2Config(
@@ -87,7 +96,7 @@ def get_model_and_dataloader(
             bos_token_id=151643,
             eos_token_id=151643,
             hidden_act="silu",
-            hidden_size=hidden_size,
+            hidden_size=512,
             initializer_range=0.02,
             intermediate_size=4864,
             max_position_embeddings=513,
@@ -108,13 +117,13 @@ def get_model_and_dataloader(
         )
         model = Qwen2ForCausalLM(config)
     elif model_name == "llama":
-        assert hidden_size == 2048, "Llama-3.1-8B requires hidden_size of 2048"
+        # assert hidden_size == 2048, "Llama-3.1-8B requires hidden_size of 2048"
         config = LlamaConfig(
             attention_dropout=0.0,
             bos_token_id=128000,
             eos_token_id=128001,
             hidden_act="silu",
-            hidden_size=hidden_size,
+            hidden_size=2048,
             initializer_range=0.02,
             intermediate_size=8192,
             max_position_embeddings=513,
@@ -132,6 +141,9 @@ def get_model_and_dataloader(
             vocab_size=128256,
         )
         model = LlamaForCausalLM(config)
+    elif model_name == "olmo":
+        config = AutoConfig.from_pretrained("allenai/OLMo-2-0425-1B")
+        model = AutoModelForCausalLM.from_config(config)
     else:
         assert 0, f"model {model_name} not supported"
-    return LMWrapper(model), train_loader
+    return LMWrapper(model), train_loader, val_loader

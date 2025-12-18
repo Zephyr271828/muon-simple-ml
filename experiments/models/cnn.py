@@ -4,7 +4,7 @@ import torchvision
 import torchvision.transforms as T
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
-from torchvision.models import resnet18
+from torchvision import models
 
 class CNNWrapper(nn.Module):
     def __init__(self, model):
@@ -18,31 +18,20 @@ class CNNWrapper(nn.Module):
             loss = nn.functional.cross_entropy(logits, labels)
         return type("Out", (), {"loss": loss, "logits": logits})
 
-class ImageNet(Dataset):
-    """
-    Drop-in replacement for torchvision.datasets.ImageNet
-    Uses HuggingFace imagenet-1k instead.
-    """
+class HFDatasetWrapper(Dataset):
+    """Wrap a HuggingFace image dataset into a PyTorch Dataset."""
 
-    def __init__(self, root=None, split="train", transform=None, limit=None):
-        assert split in ["train", "validation", "test"]
-
-        self.ds = load_dataset(
-            "imagenet-1k",
-            split=split,
-            trust_remote_code=True,
-        ).select(range(limit))
-
+    def __init__(self, hf_dataset, transform=None):
+        self.ds = hf_dataset
         self.transform = transform
-        self.limit = limit
 
     def __len__(self):
         return len(self.ds)
 
     def __getitem__(self, idx):
         sample = self.ds[idx]
-        img = sample["image"]     # PIL
-        label = sample["label"]  # int
+        img = sample["image"]
+        label = sample["label"]
 
         if self.transform is not None:
             img = self.transform(img)
@@ -62,37 +51,40 @@ def get_model_and_dataloader(
             T.Normalize((0.5071, 0.4867, 0.4408),
                         (0.2675, 0.2565, 0.2761))
         ])
-        train_dataset = torchvision.datasets.CIFAR100(
+        raw_dataset = torchvision.datasets.CIFAR100(
             root="./data",
             train=True,
             download=True,
             transform=transform,
         )
+        if limit < len(raw_dataset):
+            raw_dataset = torch.utils.data.Subset(
+                raw_dataset, range(limit)
+            )
         num_classes = 100
     elif dataset_name == "imagenet":
         transform = T.Compose([
             T.Resize(256),
             T.CenterCrop(224),
+            T.Lambda(lambda img: img.convert("RGB")),
             T.ToTensor(),
-            T.Normalize(
-                mean=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225),
-            )
+            T.Normalize(mean=(0.485, 0.456, 0.406),
+                        std=(0.229, 0.224, 0.225)),
         ])
-        train_dataset = ImageNet(
-            root="./data/imagenet",
-            split="validation",
-            transform=transform,
-            limit=limit,
-        )
-        num_classes = 1000
+        
+        hf_ds = load_dataset("timm/mini-imagenet", split="train")
+        if limit is not None:
+            hf_ds = hf_ds.select(range(min(limit, len(hf_ds))))
+        raw_dataset = HFDatasetWrapper(hf_ds, transform=transform)
+        
+        num_classes = 100
     else:
         assert 0, f"dataset {dataset_name} not supported"
 
-    if limit < len(train_dataset):
-        train_dataset = torch.utils.data.Subset(
-            train_dataset, range(limit)
-        )
+    test_size = int(len(raw_dataset) * 0.01)
+    train_dataset, val_dataset = torch.utils.data.random_split(
+        raw_dataset, [len(raw_dataset) - test_size, test_size]
+    )
 
     train_loader = DataLoader(
         train_dataset,
@@ -101,10 +93,43 @@ def get_model_and_dataloader(
         num_workers=4,
         pin_memory=True,
     )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=128,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
 
-    if model_name == "resnet":
-        model = resnet18(num_classes=num_classes)
+    if model_name == "resnet18":
+        model = models.resnet18(pretrained=False, num_classes=num_classes)
+        
+    elif model_name == "mobilenet_v2":
+        model = models.mobilenet_v2(pretrained=False)
+        model.classifier[1] = nn.Linear(
+            model.classifier[1].in_features, num_classes
+        )
+        
+    elif model_name == "efficientnet_b0":
+        model = models.efficientnet_b0(pretrained=False)
+        model.classifier[1] = nn.Linear(
+            model.classifier[1].in_features, num_classes
+        )
+        
+    elif model_name == "convnext_tiny":
+        model = models.convnext_tiny(pretrained=False)
+        model.classifier[2] = nn.Linear(
+            model.classifier[2].in_features, num_classes
+        )
+        
+    elif model_name == "vit_b_16":
+        model = models.vit_b_16(pretrained=False)
+        model.heads[0] = nn.Linear(
+            model.heads[0].in_features, num_classes
+        )
+        
     else:
         assert 0, f"model {model_name} not supported"
 
-    return CNNWrapper(model), train_loader
+    return CNNWrapper(model), train_loader, val_loader
